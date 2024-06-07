@@ -1,0 +1,15 @@
+dependencies:
+  ronny-antoon/mh_matter:
+    version: "*"
+    require: "private"
+  ronny-antoon/metric_tracker:
+    version: "*"
+    require: "private"
+  ronny-antoon/accessories:
+    version: "*"
+    require: "private"
+  idf: ">=4.1.0"
+  espressif/esp_matter:
+    version: "0.0.2"
+  espressif/button:
+    version: "3.2.0"
