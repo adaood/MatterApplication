@@ -1,5 +1,5 @@
-#ifndef APP_ENDPOINT_LIGHT_HPP
-#define APP_ENDPOINT_LIGHT_HPP
+#ifndef APP_DEVICE_LIGHT_HPP
+#define APP_DEVICE_LIGHT_HPP
 
 #include <hal/gpio_types.h>
 #include <cstdint>
@@ -7,7 +7,7 @@
 
 namespace app_delegate
 {
-    namespace endpoint
+    namespace  device
     {
         namespace on_off_light
         {
@@ -26,6 +26,6 @@ namespace app_delegate
 
             void reportAttribute_cb(void *endpoint_id);
         } // namespace on_off_light
-    } // namespace endpoint
+    } // namespace  device
 } // namespace app_delegate
-#endif // APP_ENDPOINT_LIGHT_HPP
+#endif // APP_DEVICE_LIGHT_HPP

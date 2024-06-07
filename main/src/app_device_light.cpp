@@ -1,10 +1,11 @@
-#include "app_endpoint_light.hpp"
+#include "app_device_light.hpp"
 
 #include <endpoint/on_off_light.hpp>
 #include <lightAccessory.hpp>
 
-void app_delegate::endpoint::on_off_light::updateAttribute_cb(uint16_t endpoint_id, uint32_t cluster_id, uint32_t attribute_id, esp_matter_attr_val_t *val, void *priv_data)
+void app_delegate::device::on_off_light::updateAttribute_cb(uint16_t endpoint_id, uint32_t cluster_id, uint32_t attribute_id, esp_matter_attr_val_t *val, void *priv_data)
 {
+    ESP_LOGV(__FILENAME__, "updateAttribute_cb: endpoint_id=%d, cluster_id=%d, attribute_id=%d", endpoint_id, cluster_id, attribute_id);
     if (priv_data != nullptr && val != nullptr &&
         cluster_id == chip::app::Clusters::OnOff::Id && attribute_id == chip::app::Clusters::OnOff::Attributes::OnOff::Id) // TODO: change id to metahouse endpoint cluster id
     {
@@ -13,7 +14,7 @@ void app_delegate::endpoint::on_off_light::updateAttribute_cb(uint16_t endpoint_
     }
 }
 
-void app_delegate::endpoint::on_off_light::reportAttribute_cb(void *endpoint_id)
+void app_delegate::device::on_off_light::reportAttribute_cb(void *endpoint_id)
 {
     if (endpoint_id == nullptr)
     {
@@ -25,7 +26,7 @@ void app_delegate::endpoint::on_off_light::reportAttribute_cb(void *endpoint_id)
     esp_matter::attribute::report(*id, chip::app::Clusters::OnOff::Id, chip::app::Clusters::OnOff::Attributes::OnOff::Id, &val);
 }
 
-void app_delegate::endpoint::on_off_light::create(config_t *config, esp_matter::endpoint_t *aggregator)
+void app_delegate::device::on_off_light::create(config_t *config, esp_matter::endpoint_t *aggregator)
 {
     void *priv_data = nullptr;
     if (config != nullptr)

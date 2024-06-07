@@ -1,5 +1,5 @@
 #include "app_callback.hpp"
-#include "app_endpoint_light.hpp"
+#include "app_device_light.hpp"
 
 #include <mh_matter.hpp>
 #include <endpoint/on_off_light.hpp>
@@ -30,7 +30,7 @@ esp_err_t app_delegate::app_attribute_update_cb(uint32_t device_type, uint16_t e
     }
     if (device_type == mh_matter::endpoint::on_off_light::DEVICE_TYPE_ID)
     {
-        app_delegate::endpoint::on_off_light::updateAttribute_cb(endpoint_id, cluster_id, attribute_id, static_cast<esp_matter_attr_val_t *>(val), priv_data);
+        app_delegate::device::on_off_light::updateAttribute_cb(endpoint_id, cluster_id, attribute_id, static_cast<esp_matter_attr_val_t *>(val), priv_data);
     }
     return ESP_OK;
 }
