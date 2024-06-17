@@ -1,15 +1,21 @@
 {
-    "files.associations": {
-        "cstdint": "cpp",
-        "compare": "cpp",
-        "*.ipp": "cpp",
-        "thread": "cpp"
-    },
+    "idf.flashType": "UART",
+    "idf.portWin": "COM5",
     "idf.adapterTargetName": "esp32",
+    "files.associations": {
+        "vector": "cpp",
+        "cstdint": "cpp",
+        "complex": "cpp",
+        "array": "cpp",
+        "tuple": "cpp",
+        "utility": "cpp",
+        "variant": "cpp",
+        "new": "cpp"
+    },
     "idf.openOcdConfigs": [
         "interface/ftdi/esp32_devkitj_v1.cfg",
         "target/esp32.cfg"
     ],
-    "idf.portWin": "COM9",
-    "idf.flashType": "UART"
+    "C_Cpp.clang_format_style": "file",
+    "editor.formatOnSave": false,
 }

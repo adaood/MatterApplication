@@ -1,15 +1,16 @@
 dependencies:
-  ronny-antoon/mh_matter:
-    version: "*"
-    require: "private"
-  ronny-antoon/metric_tracker:
-    version: "*"
-    require: "private"
-  ronny-antoon/accessories:
-    version: "*"
-    require: "private"
-  idf: ">=4.1.0"
-  espressif/esp_matter:
-    version: "0.0.2"
-  espressif/button:
-    version: "3.2.0"
+  idf:
+    version: ">=4.1.0"
+    require: "public" # TODO: Check if this is needed
+#   espressif/esp_matter:
+#     version: "0.0.2"
+#     require: "public" # TODO: Check if this is needed
+#   ronny-antoon/MatterDevices:
+#     version: "*"
+#     require: "public" # TODO: Check if this is needed
+#   ronny-antoon/metric_tracker:
+#     version: "*"
+#     require: "public" # TODO: Check if this is needed
+#   ronny-antoon/metahouseaccessories:
+#     version: "*"
+#     require: "public" # TODO: Check if this is needed

@@ -1,29 +1,36 @@
-#include <app_delegate.hpp>
-#include <app_device_light.hpp>
-#include <app_device_fan.hpp>
+#include <esp_err.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <nvs_flash.h>
 
-extern "C" void app_main()
-{
-    // app_delegate::config_t config = {
-    //     .factory_pin = GPIO_NUM_5,
-    //     .reset_hold_time_s = 5,
-    //     .restart_pin = GPIO_NUM_5,
-    // };
-    app_delegate::init(nullptr, true);
+#include "AccessPoint.hpp"
+#include "StorageManager.hpp"
 
-    app_delegate::device::on_off_light::config_t on_off_light_config = {
-        .led_pin = GPIO_NUM_2,
-        .button_pin = GPIO_NUM_5,
-        .device_name = "Light",
-    };
-    app_delegate::device::on_off_light::create(&on_off_light_config);
+static const char *TAG = "main";
 
-    app_delegate::device::fan::config_t fan_config = {
-        .fan_pin = GPIO_NUM_5,
-        .button_pin = GPIO_NUM_5,
-        .device_name = "Fan",
-    };
-    app_delegate::device::fan::create(&fan_config);
+extern "C" void app_main() {
+  ESP_ERROR_CHECK(nvs_flash_init());
 
-    app_delegate::start();
+  StorageManager *storageManager = new StorageManager();
+  if (storageManager == nullptr) {
+    ESP_LOGE(TAG, "Failed to create StorageManager instance");
+    return;
+  }
+
+  bool programMode = storageManager->checkProgramMode();
+
+  if (programMode) {
+    ESP_LOGI(TAG, "Program mode is set");
+  } else {
+    ESP_LOGI(TAG, "Program mode is not set");
+  }
+
+  AccessPoint *accessPoint = new AccessPoint(storageManager);
+
+  accessPoint->startWebServer();
+
+  while (true) {
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
 }

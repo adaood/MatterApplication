@@ -1,0 +1,110 @@
+<html>
+
+<head>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="script.js"></script>
+    <title>MetaHouse Setup</title>
+</head>
+
+<body onload="onLoadFunc()">
+    <div>
+        <div class="sidebar">
+            <img src="logowhite.png">
+            <span id="sidebarHomePage" onclick="SideBarClick(this)" class="sidebarActive"
+                data-page="HomePageBody">Home</span>
+            <span id="sidebarWifi" onclick="SideBarClick(this)" data-page="WifiBody">Set Up Wifi XD</span>
+            <span id="sidebarAccessories" onclick="SideBarClick(this)" data-page="AccessoriesBody">Edit
+                Accessories</span>
+            <span id="sidebarUnpair" onclick="SideBarClick(this)" data-page="UnpairBody">Unpair From HomeKit</span>
+            <span id="sidebarReset" onclick="SideBarClick(this)" data-page="ResetBody">Factory Reset</span>
+            <span id="sidebarUpdate" onclick="SideBarClick(this)" data-page="UpdateBody">Update Firmware</span>
+            <span id="sidebarExit" onclick="SideBarClick(this)" data-page="ExitBody">Exit</span>
+        </div>
+
+        <div id="rightBody" class="mainBody">
+            <!-- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+            <div id="HomePageBody" class="bodyActive">
+                <h1>MetaHouse Solutions</h1>
+                <h3>Its Time To Change Your Life</h1>
+                    <p>
+                        If you want to reach this captive portal again
+                        just connect your wifi to the Access Point "MetaHouse Setup..."
+                        and then open your browser and type in the Address bar "192.168.1.1"
+                    </p>
+            </div>
+            <!-- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+            <div id="WifiBody" class="bodyHidden">
+                <h2>Please enter your Wifi SSID and PASSWORD</h2>
+                <table class="wifiTable">
+                    <tr>
+                        <td>Wifi(2.4GHz) :</td>
+                        <td>
+                            <input type="text" id="WifiSSID">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Password :</td>
+                        <td><input type="text" id="WifiPassword"></td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <button id="TryConnect" onclick="tryWifiPasswordConnect()">Try to Connect</button>
+                            <div id="loaderConnect" class="loader" style="display: none;"></div>
+                        </td>
+                        <td>
+                            <button id="SaveWifi" onclick="saveWifi()">Save Wifi</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <!-- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+            <div id="AccessoriesBody" class="bodyHidden">
+                <div class="close" onclick="sendAccessoriesToServer()">Save</div>
+                <div style="font-size: 35px; font-weight: bold;">
+                    All Accessories
+                </div>
+                <div id="GridContainer" class="grid-container">
+
+                </div>
+                <div class="addAccessoryButton" onclick="addButton()">Add Accessory</div>
+
+                <div id="addAccessoryScreen" class="editFullScreen">
+                    <div id="addModel" class="editModel">
+                        <div class="close" onclick="addButtonDone()">Add</div>
+                        <div>Add Accessory</div>
+                        <div id="addTableView"></div>
+                    </div>
+                </div>
+
+                <div id="editFullScreen" class="editFullScreen">
+                    <div id="editModel" class="editModel">
+                        <div class="close" onclick="closeButton()">Done</div>
+                        <div>Edit Accessory</div>
+                        <div id="editTableView"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+            <div id="UnpairBody" class="bodyHidden">
+                <div class="close" onclick="unpairDevice()">Unpair this device from homekit</div>
+            </div>
+            <!-- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+            <div id="ResetBody" class="bodyHidden">
+                <div class="close" onclick="factoryresetDevice()">Factory reset all settings and configrations.</div>
+            </div>
+            <!-- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+            <div id="UpdateBody" class="bodyHidden">
+                <div class="close" id="updateLabel" onclick="updatefirmwareDevice()">Update latest firmware on
+                    server.</div>
+            </div>
+            <!-- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+            <div id="ExitBody" class="bodyHidden">
+                <div class="close" onclick="existDevice()">Exist program mode and restart the device.</div>
+            </div>
+            <!-- ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+        </div>
+    </div>
+</body>
+
+</html>

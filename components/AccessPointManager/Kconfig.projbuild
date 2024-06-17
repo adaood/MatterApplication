@@ -1,0 +1,49 @@
+menu "AccessPoint Manager"
+    config AP_SSID
+        string "SSID"
+        default "MetaHouse AP"
+        help 
+            The SSID of the Access Point
+
+    config AP_PASSWORD
+        string "Password"
+        default "123456789"
+        help 
+            The password of the Access Point
+
+    config AP_CHANNEL
+        int "Channel"
+        default 1
+        help 
+            The channel of the Access Point
+
+    config AP_MAX_CONNECTIONS
+        int "Max Connections"
+        default 4
+        help 
+            The maximum number of connections to the Access Point
+
+    config AP_WEB_STACK_SIZE
+        int "Web Stack Size"
+        default 8192
+        help 
+            The stack size of the web server
+
+    config AP_MAX_PATH_SIZE
+        int "Max Path Size"
+        default 512
+        help 
+            The maximum size of the path
+
+    config AP_STREAM_BUFFER_SIZE
+        int "Stream Buffer Size"
+        default 1024
+        help 
+            The size of the stream buffer
+
+    config AP_ACCESSORY_JSON_SIZE
+        int "Accessory JSON Size"
+        default 2048
+        help 
+            The size of the accessory JSON
+endmenu

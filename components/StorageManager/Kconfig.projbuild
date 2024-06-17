@@ -1,0 +1,25 @@
+menu "Storage Manager"
+    config SM_NVS_NAMESPACE
+        string "NVS Namespace"
+        default "metahouse"
+        help
+          The namespace used for NVS storage.
+    
+    config SM_NVS_PARTITION
+        string "NVS Partition"
+        default "nvs"
+        help
+          The partition used for NVS storage.
+    
+    config SM_NVS_KEY_PROGRAM_MODE
+        string "NVS Key Program Mode"
+        default "program_mode"
+        help
+          The key used to store the program mode in NVS.
+
+    config SM_NVS_KEY_ACCESSORY_DB
+        string "NVS Key Accessory DB"
+        default "accessory_db"
+        help
+          The key used to store the accessory database in NVS.
+endmenu
