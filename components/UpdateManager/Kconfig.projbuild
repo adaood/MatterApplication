@@ -39,4 +39,12 @@ menu "Update Manager"
             Enter the password for the WiFi network. The password is used to
             authenticate the device to the access point and establish a secure
             connection.
+
+    config UM_WIFI_CONNECT_TIMEOUT
+        int "WiFi Connect Timeout"
+        default 30
+        help
+            The time in seconds to wait for the device to connect to the WiFi
+            network. If the device is unable to connect to the network within
+            this time, the upgrade process will be aborted.
 endmenu

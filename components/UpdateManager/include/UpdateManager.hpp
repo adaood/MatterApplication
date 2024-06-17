@@ -5,6 +5,8 @@
 #include <esp_event.h>
 
 class UpdateManager {
+  inline volatile static bool wifi_connected = false;
+
  public:
   static void ota_task(void* pvParameter);
   static esp_err_t validate_image_header(esp_app_desc_t* new_app_info);

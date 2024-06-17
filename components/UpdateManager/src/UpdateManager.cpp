@@ -136,13 +136,29 @@ void UpdateManager::event_handler(void *arg, esp_event_base_t event_base, int32_
         break;
     }
   }
+
+  if (event_base == WIFI_EVENT) {
+    switch (event_id) {
+      // case WIFI_EVENT_STA_START:
+      //   esp_wifi_connect();
+      //   break;
+      case WIFI_EVENT_STA_CONNECTED:
+        wifi_connected = true;
+        break;
+      case WIFI_EVENT_STA_DISCONNECTED:
+        wifi_connected = false;
+        break;
+    }
+  }
 }
 
 void UpdateManager::start_ota() {
   ESP_LOGI("UpdateManager", "start_ota");
   esp_netif_init();
   esp_event_loop_create_default();
+
   esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL);
+  esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL);
 
   esp_netif_create_default_wifi_sta();
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -163,11 +179,24 @@ void UpdateManager::start_ota() {
   };
   esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
 
+  wifi_connected = false;
+  uint32_t retry = 0;
+
   esp_wifi_connect();
 
-  // xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
-
-  while (1) {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  while (true) {
+    vTaskDelay(pdMS_TO_TICKS(100));
+    retry += 100;
+    if (wifi_connected == true) {
+      ESP_LOGI(TAG, "Connected to WiFi");
+      break;
+    }
+    if ((retry) >= (CONFIG_UM_WIFI_CONNECT_TIMEOUT * 1000)) {
+      ESP_LOGW(TAG, "Failed to connect to WiFi");
+      return;
+      break;
+    }
   }
+
+  xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
 }
