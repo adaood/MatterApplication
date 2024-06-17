@@ -1,7 +1,8 @@
 menu "Update Manager"
     config UM_FIRMWARE_UPGRADE_URL
         string "Firmware Upgrade URL"
-        default "http://example.com/firmware.bin"
+        
+        default "https://github.com/ronny-antoon/MatterApplication/blob/master/OTA_EXAMPLE/MatterApplication.bin?raw=true"
         help
             Enter the URL of the firmware upgrade file. The URL must be a full
             URL including the protocol (http:// or https://) and the filename
