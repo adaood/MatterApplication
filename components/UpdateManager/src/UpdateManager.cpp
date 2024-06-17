@@ -198,5 +198,7 @@ void UpdateManager::start_ota() {
     }
   }
 
+  vTaskDelay(pdMS_TO_TICKS(5000));
+
   xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
 }
