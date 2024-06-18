@@ -10,7 +10,12 @@
         "tuple": "cpp",
         "utility": "cpp",
         "variant": "cpp",
-        "new": "cpp"
+        "new": "cpp",
+        "esp_https_ota.h": "c",
+        "esp_app_desc.h": "c",
+        "esp_http_client.h": "c",
+        "bootloader_common.h": "c",
+        "stdint.h": "c"
     },
     "idf.openOcdConfigs": [
         "interface/ftdi/esp32_devkitj_v1.cfg",

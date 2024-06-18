@@ -20,7 +20,12 @@ void UpdateManager::ota_task(void *pvParameter) {
   esp_http_client_config_t config = {
       .url = CONFIG_UM_FIRMWARE_UPGRADE_URL,
       .cert_pem = (char *)server_root_cert_pem_start,
-      .timeout_ms = CONFIG_UM_OTA_RECV_TIMEOUT,
+      .cert_len = strlen((char *)server_root_cert_pem_start) + 1,
+      // .client_cert_pem = (char *)server_root_cert_pem_start,
+      // .client_cert_len = strlen((char *)server_root_cert_pem_start) + 1,
+      .timeout_ms = CONFIG_UM_OTA_RECV_TIMEOUT * 5,
+      .is_async = false,
+      .skip_cert_common_name_check = true,
       .keep_alive_enable = true,
   };
 
@@ -33,7 +38,9 @@ void UpdateManager::ota_task(void *pvParameter) {
   esp_https_ota_handle_t https_ota_handle = NULL;
   esp_err_t err = esp_https_ota_begin(&ota_config, &https_ota_handle);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "ESP HTTPS OTA Begin failed");
+    // print the error and delete the task name
+    ESP_LOGE(TAG, "esp_https_ota_begin failed, error=%s", esp_err_to_name(err));
+
     vTaskDelete(NULL);
   }
 
@@ -198,7 +205,7 @@ void UpdateManager::start_ota() {
     }
   }
 
-  vTaskDelay(pdMS_TO_TICKS(5000));
+  vTaskDelay(pdMS_TO_TICKS(10000));
 
   xTaskCreate(&ota_task, "ota_task", 8192, NULL, 5, NULL);
 }
