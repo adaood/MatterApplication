@@ -17,6 +17,15 @@ class AccessPoint {
   static esp_err_t accessories_handler(httpd_req_t *req);
   static esp_err_t wifi_handler(httpd_req_t *req);
 
+  // callback function for the wifi event
+  static void change_led_status(int32_t event_id);  /// TODO : Reimplement this function
+
+  /**  event handler for wifi events
+   *   to handle the wifi events and change the led status when WIFI_EVENT_AP_STACONNECTED and
+   * WIFI_EVENT_AP_STADISCONNECTED
+   */
+  static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+
  public:
   AccessPoint(StorageManagerInterface *storageManager);
   ~AccessPoint();

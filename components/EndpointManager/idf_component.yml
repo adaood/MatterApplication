@@ -1,0 +1,14 @@
+dependencies:
+  idf:
+    version: ">=4.1.0"
+    require: "public"
+  espressif/esp_matter:
+    version: "0.0.2"
+    require: "private"
+  bblanchon/arduinojson:
+    version: "7.0.4"
+    require: "public"
+  ronny-antoon/MatterDevices:
+    version: "*"
+    require: "private"
+  

@@ -65,6 +65,13 @@ AccessPoint::AccessPoint(StorageManagerInterface *storageManager) : storageManag
     return;
   }
 
+  // register event task handler for wifi events
+  err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, this);
+
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to register wifi event handler: %s", esp_err_to_name(err));
+  }
+
   ESP_LOGI(TAG, "Access point started");
 }
 
@@ -355,4 +362,23 @@ esp_err_t AccessPoint::wifi_handler(httpd_req_t *req) {
     return ESP_OK;
   }
   return ESP_OK;
+}
+
+void AccessPoint::change_led_status(int32_t event_id) {
+  // change the led status
+}
+
+void AccessPoint::wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id,
+                                     void *event_data) {
+  if (event_base == WIFI_EVENT) {
+    AccessPoint *self = (AccessPoint *)arg;
+
+    if (event_id == WIFI_EVENT_AP_STACONNECTED) {
+      ESP_LOGI(TAG, "station connected");
+      self->change_led_status(WIFI_EVENT_AP_STACONNECTED);
+    } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
+      ESP_LOGI(TAG, "station disconnected");
+      self->change_led_status(WIFI_EVENT_AP_STADISCONNECTED);
+    }
+  }
 }

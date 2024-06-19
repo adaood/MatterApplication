@@ -1,0 +1,9 @@
+menu "Endpoint Manager"
+    config JSON_ACCESSORIES_LENGTH
+        int "JSON Accessories Length"
+        default 4000
+            help 
+                The maximum length of the JSON string that can be sent to the endpoint manager.
+                This value should be set to the maximum length of the JSON string that the endpoint manager can handle.
+                The default value is 4000.
+endmenu
