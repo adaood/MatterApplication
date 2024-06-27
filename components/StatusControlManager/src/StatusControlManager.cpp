@@ -66,7 +66,7 @@ void StatusControlManager::wifiEventHandler(void* arg, esp_event_base_t eventBas
 void StatusControlManager::startLedTask() {
   m_relayModule->setPower(false);
   if (m_blinkTaskHandle != nullptr) {
-    vTaskDelete(m_blinkTaskHandle);
+    vTaskDelete(*m_blinkTaskHandle);
     m_blinkTaskHandle = nullptr;
   }
 
@@ -106,7 +106,7 @@ void StatusControlManager::ledBlinkingTask() {
     default:
       m_relayModule->setPower(true);
       m_blinkTaskHandle = nullptr;
-      vTaskDelete(m_blinkTaskHandle);
+      vTaskDelete(*m_blinkTaskHandle);
       break;
   }
 
@@ -141,14 +141,14 @@ void StatusControlManager::setButtonCallbacks() {
 
 void StatusControlManager::resetartCallBack() {
   if (m_storageManager != nullptr) {
-    m_storageManager->isProgramModeEnabled(false);
+    m_storageManager->setProgramMode(false);
   }
   esp_restart();
 }
 
 void StatusControlManager::programModeCallBack() {
   if (m_storageManager != nullptr) {
-    m_storageManager->isProgramModeEnabled(true);
+    m_storageManager->setProgramMode(true);
   }
   esp_restart();
 }
