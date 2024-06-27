@@ -54,6 +54,8 @@ class StatusControlManager : public StatusControlManagerInterface {
   RelayModuleInterface* m_relayModule;        ///< Pointer to the relay module interface
   ButtonModuleInterface* m_buttonModule;      ///< Pointer to the button module interface
   TaskHandle_t* m_blinkTaskHandle;            ///< Handle of the blink task
+  bool internalRelayModule;                   ///< Flag to indicate if the relay module is internal
+  bool internalButtonModule;                  ///< Flag to indicate if the button module is internal
 
   /**
    * @brief Initialize the Wi-Fi event listener.

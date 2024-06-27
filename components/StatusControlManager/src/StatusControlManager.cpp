@@ -14,7 +14,9 @@ StatusControlManager::StatusControlManager(StorageManagerInterface* storageManag
       m_relayModule(relayModule),
       m_buttonModule(buttonModule),
       m_currentStatusMode(DeviceStatusMode::WaitingForPairing),
-      m_blinkTaskHandle(nullptr) {
+      m_blinkTaskHandle(nullptr),
+      internalRelayModule(relayModule == nullptr),
+      internalButtonModule(buttonModule == nullptr) {
   if (m_relayModule == nullptr) {
     ESP_LOGI(TAG, "Creating default relay module");
     m_relayModule = new RelayModule(CONFIG_S_C_M_STATUS_LED_PIN, 1, 1);
@@ -24,6 +26,21 @@ StatusControlManager::StatusControlManager(StorageManagerInterface* storageManag
     m_buttonModule =
         new ButtonModule(CONFIG_S_C_M_CONTROL_BUTTON_PIN, 1, CONFIG_S_C_M_CONTROL_BUTTON_DEBOUNCE_DELAY,
                          CONFIG_S_C_M_CONTROL_BUTTON_LONG_PRESS_DELAY);
+  }
+}
+
+StatusControlManager::~StatusControlManager() {
+  if (m_blinkTaskHandle != nullptr) {
+    vTaskDelete(*m_blinkTaskHandle);
+    m_blinkTaskHandle = nullptr;
+  }
+  if (m_relayModule != nullptr && internalRelayModule) {
+    delete m_relayModule;
+    m_relayModule = nullptr;
+  }
+  if (m_buttonModule != nullptr && internalButtonModule) {
+    delete m_buttonModule;
+    m_buttonModule = nullptr;
   }
 }
 
