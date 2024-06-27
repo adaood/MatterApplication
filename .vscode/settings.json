@@ -16,7 +16,12 @@
         "esp_http_client.h": "c",
         "bootloader_common.h": "c",
         "stdint.h": "c",
-        "string": "cpp"
+        "string": "cpp",
+        "bitset": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "span": "cpp",
+        "regex": "cpp"
     },
     "idf.openOcdConfigs": [
         "interface/ftdi/esp32_devkitj_v1.cfg",
