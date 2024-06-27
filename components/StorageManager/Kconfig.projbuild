@@ -17,6 +17,12 @@ menu "Storage Manager"
         help
           The key used to store the program mode in NVS.
 
+    config SM_NVS_KEY_DEVICE_NAME
+        string "NVS Key Device Name"
+        default "device_name"
+        help
+          The key used to store the device name in NVS.
+
     config SM_NVS_KEY_ACCESSORY_DB
         string "NVS Key Accessory DB"
         default "accessory_db"

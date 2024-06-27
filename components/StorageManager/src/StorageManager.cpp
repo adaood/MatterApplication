@@ -3,9 +3,9 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <esp_system.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+#include <nvs.h>
 #include <nvs_flash.h>
+#include <string.h>
 
 static const char *TAG = "StorageManager";
 
@@ -13,239 +13,255 @@ StorageManager::StorageManager() { ESP_LOGI(TAG, "StorageManager instance create
 
 StorageManager::~StorageManager() { ESP_LOGI(TAG, "StorageManager instance destroyed"); }
 
-esp_err_t StorageManager::eraseStorage() {  // nvs_erase_all
-  ESP_LOGI(TAG, "Erasing storage");
+esp_err_t StorageManager::initialize() {
+  ESP_LOGI(TAG, "Initializing StorageManager");
 
-  nvs_handle_t nvsHandle;
-
-  // Erase NVS
-  esp_err_t err =
-      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READWRITE, &nvsHandle);
-  if (err == ESP_ERR_NVS_NOT_FOUND) {
-    ESP_LOGI(TAG, "NVS not found, nothing to erase");
-    return ESP_OK;
-  } else {
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to open NVS");
-      return err;
+  // Initialize NVS flash partition
+  esp_err_t err = nvs_flash_init_partition(CONFIG_SM_NVS_PARTITION);
+  if (err != ESP_OK) {
+    switch (err) {
+      case ESP_ERR_NVS_NO_FREE_PAGES:
+        ESP_LOGE(TAG, "NVS partition has no free pages, erasing and retrying");
+        // Try to erase and reinitialize
+        err = nvs_flash_erase_partition(CONFIG_SM_NVS_PARTITION);
+        if (err == ESP_OK) {
+          err = nvs_flash_init_partition(CONFIG_SM_NVS_PARTITION);
+        }
+        break;
+      case ESP_ERR_NVS_NEW_VERSION_FOUND:
+        ESP_LOGE(TAG, "NVS partition contains a new version, erasing and retrying");
+        // Erase and reinitialize
+        err = nvs_flash_erase_partition(CONFIG_SM_NVS_PARTITION);
+        if (err == ESP_OK) {
+          err = nvs_flash_init_partition(CONFIG_SM_NVS_PARTITION);
+        }
+        break;
+      default:
+        ESP_LOGE(TAG, "Failed to initialize NVS flash, error code: %s", esp_err_to_name(err));
+        break;
     }
   }
 
-  err = nvs_erase_all(nvsHandle);
+  if (err == ESP_OK) {
+    ESP_LOGI(TAG, "StorageManager initialized successfully");
+  } else {
+    ESP_LOGE(TAG, "StorageManager initialization failed");
+  }
+
+  return err;
+}
+
+esp_err_t StorageManager::eraseAllData() {
+  ESP_LOGI(TAG, "Erasing all Partitions data");
+
+  esp_err_t err = nvs_flash_erase();
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to erase NVS namespace");
-    nvs_close(nvsHandle);
+    ESP_LOGE(TAG, "Failed to erase all Partitions data: %s", esp_err_to_name(err));
+  }
+
+  return err;
+}
+
+esp_err_t StorageManager::setProgramMode(bool enable) {
+  ESP_LOGI(TAG, "Setting program mode to %s", enable ? "enabled" : "disabled");
+
+  nvs_handle_t handle;
+  esp_err_t err =
+      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READWRITE, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
     return err;
   }
 
-  nvs_commit(nvsHandle);
-  nvs_close(nvsHandle);
+  uint8_t currentMode;
+  err = nvs_get_u8(handle, CONFIG_SM_NVS_KEY_PROGRAM_MODE, &currentMode);
+  if (err == ESP_ERR_NVS_NOT_FOUND || currentMode != enable) {
+    err = nvs_set_u8(handle, CONFIG_SM_NVS_KEY_PROGRAM_MODE, enable);
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "Failed to set program mode: %s", esp_err_to_name(err));
+      nvs_close(handle);
+      return err;
+    }
 
-  ESP_LOGI(TAG, "Storage erased");
-  return ESP_OK;
+    err = nvs_commit(handle);
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "Failed to commit program mode: %s", esp_err_to_name(err));
+    }
+  }
+
+  nvs_close(handle);
+  return err;
 }
 
-esp_err_t StorageManager::eraseDevice() {
-  ESP_LOGI(TAG, "Erasing device");
+esp_err_t StorageManager::isProgramModeEnabled(bool *isEnabled) {
+  ESP_LOGI(TAG, "Checking if program mode is enabled");
 
-  // Erase NVS
-  esp_err_t err = nvs_flash_erase_partition(CONFIG_SM_NVS_PARTITION);
+  nvs_handle_t handle;
+  esp_err_t err =
+      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READONLY, &handle);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to erase NVS partition");
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
     return err;
   }
 
-  ESP_LOGI(TAG, "Device erased");
-  return ESP_OK;
+  uint8_t mode;
+  err = nvs_get_u8(handle, CONFIG_SM_NVS_KEY_PROGRAM_MODE, &mode);
+  nvs_close(handle);
+
+  if (err == ESP_ERR_NVS_NOT_FOUND) {
+    *isEnabled = false;
+    err = ESP_OK;
+  } else if (err == ESP_OK) {
+    *isEnabled = mode;
+  } else {
+    ESP_LOGE(TAG, "Failed to get program mode: %s", esp_err_to_name(err));
+  }
+
+  return err;
 }
 
-bool StorageManager::checkProgramMode() {
-  ESP_LOGI(TAG, "Checking program mode");
+esp_err_t StorageManager::setDeviceName(const char *name, size_t length) {
+  ESP_LOGI(TAG, "Setting device name");
 
-  nvs_handle_t nvsHandle;
-
-  // Open NVS namespace
+  nvs_handle_t handle;
   esp_err_t err =
-      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READONLY, &nvsHandle);
-  if (err == ESP_ERR_NVS_NOT_FOUND) {
-    ESP_LOGI(TAG, "NVS not found, defaulting to program mode");
-    return true;
-  } else {
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to open NVS");
-      return true;
-    }
-  }
-
-  // Read program mode
-  bool programMode;
-  err = nvs_get_u8(nvsHandle, CONFIG_SM_NVS_KEY_PROGRAM_MODE, (uint8_t *)&programMode);
-  if (err == ESP_ERR_NVS_NOT_FOUND) {
-    ESP_LOGI(TAG, "Program mode not found, defaulting to program mode");
-    nvs_close(nvsHandle);
-    return true;
-  } else {
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to read program mode");
-      nvs_close(nvsHandle);
-      return true;
-    }
-  }
-
-  nvs_close(nvsHandle);
-
-  ESP_LOGI(TAG, "Program mode: %s", programMode ? "true" : "false");
-  return programMode;
-}
-
-esp_err_t StorageManager::setProgramMode(bool programMode) {
-  ESP_LOGI(TAG, "Setting program mode");
-
-  nvs_handle_t nvsHandle;
-
-  // Open NVS namespace
-  esp_err_t err =
-      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READWRITE, &nvsHandle);
-  if (err == ESP_ERR_NVS_NOT_FOUND) {
-    ESP_LOGI(TAG, "NVS not found, creating new NVS");
-    err = nvs_flash_init_partition(CONFIG_SM_NVS_PARTITION);
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to initialize NVS partition");
-      return err;
-    }
-    err =
-        nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READWRITE, &nvsHandle);
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to open NVS");
-      return err;
-    }
-  } else {
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to open NVS");
-      return err;
-    }
-  }
-
-  // Write program mode
-  err = nvs_set_u8(nvsHandle, CONFIG_SM_NVS_KEY_PROGRAM_MODE, programMode);
+      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READWRITE, &handle);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to write program mode");
-    nvs_close(nvsHandle);
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
     return err;
   }
 
-  // Commit changes
-  err = nvs_commit(nvsHandle);
+  err = nvs_set_blob(handle, CONFIG_SM_NVS_KEY_DEVICE_NAME, name, length);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to commit changes");
-    nvs_close(nvsHandle);
+    ESP_LOGE(TAG, "Failed to set device name: %s", esp_err_to_name(err));
+    nvs_close(handle);
     return err;
   }
 
-  nvs_close(nvsHandle);
+  err = nvs_commit(handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to commit device name: %s", esp_err_to_name(err));
+  }
 
-  ESP_LOGI(TAG, "Program mode set to: %s", programMode ? "true" : "false");
-  return ESP_OK;
+  nvs_close(handle);
+  return err;
 }
 
-esp_err_t StorageManager::getAccessoryDB(char *response, size_t response_size) {
-  ESP_LOGI(TAG, "Getting accessory DB");
+esp_err_t StorageManager::getDeviceName(char *name, size_t length) {
+  ESP_LOGI(TAG, "Getting device name");
 
-  nvs_handle_t nvsHandle;
-
-  // Open NVS namespace
+  nvs_handle_t handle;
   esp_err_t err =
-      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READONLY, &nvsHandle);
+      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READONLY, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
+    return err;
+  }
+
+  size_t requiredSize = length;
+  err = nvs_get_blob(handle, CONFIG_SM_NVS_KEY_DEVICE_NAME, name, &requiredSize);
+  nvs_close(handle);
+
   if (err == ESP_ERR_NVS_NOT_FOUND) {
-    ESP_LOGI(TAG, "NVS not found, nothing to read");
+    ESP_LOGI(TAG, "Device name not found");
     return ESP_FAIL;
-  } else {
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to open NVS");
-      return err;
-    }
+  } else if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to get device name: %s", esp_err_to_name(err));
   }
 
-  // Read accessory DB
-  size_t required_size;
-  err = nvs_get_str(nvsHandle, CONFIG_SM_NVS_KEY_ACCESSORY_DB, NULL, &required_size);
-  if (err == ESP_ERR_NVS_NOT_FOUND) {
-    ESP_LOGI(TAG, "Accessory DB not found, nothing to read");
-    nvs_close(nvsHandle);
-    return ESP_FAIL;
-  } else {
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to read accessory DB");
-      nvs_close(nvsHandle);
-      return err;
-    }
-  }
-
-  if (required_size > response_size) {
-    ESP_LOGE(TAG, "Response buffer too small");
-    nvs_close(nvsHandle);
-    return ESP_ERR_NO_MEM;
-  }
-
-  err = nvs_get_str(nvsHandle, CONFIG_SM_NVS_KEY_ACCESSORY_DB, response, &required_size);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to read accessory DB");
-    nvs_close(nvsHandle);
-    return err;
-  }
-
-  nvs_close(nvsHandle);
-
-  ESP_LOGI(TAG, "Accessory DB read");
-  return ESP_OK;
+  return err;
 }
 
-esp_err_t StorageManager::setAccessoryDB(const char *newAccessoryDB) {
-  ESP_LOGI(TAG, "Setting accessory DB");
+esp_err_t StorageManager::getDeviceNameLength(size_t *length) {
+  ESP_LOGI(TAG, "Getting device name length");
 
-  nvs_handle_t nvsHandle;
-
-  // Open NVS namespace
+  nvs_handle_t handle;
   esp_err_t err =
-      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READWRITE, &nvsHandle);
+      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READONLY, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
+    return err;
+  }
+
+  err = nvs_get_blob(handle, CONFIG_SM_NVS_KEY_DEVICE_NAME, NULL, length);
+  nvs_close(handle);
+
+  if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+    ESP_LOGE(TAG, "Failed to get device name length: %s", esp_err_to_name(err));
+  }
+
+  return err;
+}
+
+esp_err_t StorageManager::getAccessoryJson(char *json, size_t length) {
+  ESP_LOGI(TAG, "Getting accessory JSON");
+
+  nvs_handle_t handle;
+  esp_err_t err =
+      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READONLY, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
+    return err;
+  }
+
+  size_t requiredSize = length;
+  err = nvs_get_str(handle, CONFIG_SM_NVS_KEY_ACCESSORY_DB, json, &requiredSize);
+  nvs_close(handle);
+
   if (err == ESP_ERR_NVS_NOT_FOUND) {
-    ESP_LOGI(TAG, "NVS not found, creating new NVS");
-    err = nvs_flash_init_partition(CONFIG_SM_NVS_PARTITION);
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to initialize NVS partition");
-      return err;
-    }
-    err =
-        nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READWRITE, &nvsHandle);
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to open NVS");
-      return err;
-    }
-  } else {
-    if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to open NVS");
-      return err;
-    }
+    ESP_LOGI(TAG, "Accessory JSON not found");
+    return ESP_FAIL;
+  } else if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to get accessory JSON: %s", esp_err_to_name(err));
   }
 
-  // Write accessory DB
-  err = nvs_set_str(nvsHandle, CONFIG_SM_NVS_KEY_ACCESSORY_DB, newAccessoryDB);
+  return err;
+}
+
+esp_err_t StorageManager::setAccessoryJson(const char *json, size_t length) {
+  ESP_LOGI(TAG, "Setting accessory JSON");
+
+  nvs_handle_t handle;
+  esp_err_t err =
+      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READWRITE, &handle);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to write accessory DB");
-    nvs_close(nvsHandle);
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
     return err;
   }
 
-  // Commit changes
-  err = nvs_commit(nvsHandle);
+  err = nvs_set_str(handle, CONFIG_SM_NVS_KEY_ACCESSORY_DB, json);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to commit changes");
-    nvs_close(nvsHandle);
+    ESP_LOGE(TAG, "Failed to set accessory JSON: %s", esp_err_to_name(err));
+    nvs_close(handle);
     return err;
   }
 
-  nvs_close(nvsHandle);
+  err = nvs_commit(handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to commit accessory JSON: %s", esp_err_to_name(err));
+  }
 
-  ESP_LOGI(TAG, "Accessory DB set");
-  return ESP_OK;
+  nvs_close(handle);
+  return err;
+}
+
+esp_err_t StorageManager::getAccessoryJsonLength(size_t *length) {
+  ESP_LOGI(TAG, "Getting accessory JSON length");
+
+  nvs_handle_t handle;
+  esp_err_t err =
+      nvs_open_from_partition(CONFIG_SM_NVS_PARTITION, CONFIG_SM_NVS_NAMESPACE, NVS_READONLY, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(err));
+    return err;
+  }
+
+  err = nvs_get_str(handle, CONFIG_SM_NVS_KEY_ACCESSORY_DB, NULL, length);
+  nvs_close(handle);
+
+  if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+    ESP_LOGE(TAG, "Failed to get accessory JSON length: %s", esp_err_to_name(err));
+  }
+
+  return err;
 }
