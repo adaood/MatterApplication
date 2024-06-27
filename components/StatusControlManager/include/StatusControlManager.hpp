@@ -1,74 +1,105 @@
 #pragma once
 
+#include <esp_event.h>
+#include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
 #include <ButtonModuleInterface.hpp>
 #include <RelayModuleInterface.hpp>
-#include <StorageManagerInterface.hpp>
 
 #include "StatusControlManagerInterface.hpp"
+#include "StorageManagerInterface.hpp"
 
 /**
- * @file StatusControlManager.hpp
- * @brief Manages the status led and control button.
- */
-
-/**
- * @class StatusControlManager
+ * @brief Manages the status of the device, including Wi-Fi events and status modes.
  */
 class StatusControlManager : public StatusControlManagerInterface {
  public:
   /**
-   * @brief Constructor for the StatusControlManager class.
-   * @param buttonModule The button module to use.
-   * @param relayModule The relay module to use.
+   * @brief Constructor.
+   * @param storageManager Pointer to the storage manager interface.
+   * @param relayModule Pointer to the relay module interface.
+   * @param buttonModule Pointer to the button module interface.
    */
-  StatusControlManager(ButtonModuleInterface *buttonModule, RelayModuleInterface *relayModule,
-                       StorageManagerInterface *storageManager, STATUS_MODE mode = STATUS_MODE::RUNNING);
+  StatusControlManager(StorageManagerInterface* storageManager = nullptr,
+                       RelayModuleInterface* relayModule = nullptr,
+                       ButtonModuleInterface* buttonModule = nullptr);
 
   /**
-   * @brief Destructor for the StatusControlManager class.
+   * @brief Destructor.
    */
-  ~StatusControlManager();
+  ~StatusControlManager() override;
 
   /**
-   * @brief Get the current status mode.
+   * @brief Get the current status mode of the device.
    * @return The current status mode.
    */
-  STATUS_MODE getStatusMode() override;
+  DeviceStatusMode getCurrentStatusMode() const override;
 
   /**
-   * @brief Set the status mode.
-   * @details This method will change the status mode and start the blinking task.
+   * @brief Update the status mode of the device.
    * @param mode The new status mode to set.
    */
-  void setStatusMode(STATUS_MODE mode) override;
-
- private:
-  ButtonModuleInterface *buttonModule;
-  RelayModuleInterface *relayModule;
-  StorageManagerInterface *storageManager;
-  STATUS_MODE statusMode;
-  TaskHandle_t blinkTaskHandle;
-  uint16_t programModeTimings[4] = {2000, 2000, 2000, 2000};  ///< Durations for program mode LED blinking.
-  uint16_t tryConnectTimings[4] = {150, 150, 150, 1000};      ///< Durations for try connecting LED blinking.
-  uint16_t searchWifiTimings[4] = {250, 250, 250, 250};       ///< Durations for search WiFi LED blinking.
-
-  static void buttonSingleFunction(void *self);
-  static void buttonLongFunction(void *self);
+  void updateStatusMode(DeviceStatusMode mode) override;
 
   /**
-   * @brief Task for LED blinking based on status mode.
-   * @param firstON Duration of the first ON state.
-   * @param firstOFF Duration of the first OFF state.
-   * @param secondON Duration of the second ON state.
-   * @param secondOFF Duration of the second OFF state.
+   * @brief Start the status control manager.
    */
-  void ledBlinkingTask(uint16_t firstON, uint16_t firstOFF, uint16_t secondON, uint16_t secondOFF);
+  void start() override;
+
+ private:
+  DeviceStatusMode m_currentStatusMode;       ///< Current status mode of the device
+  StorageManagerInterface* m_storageManager;  ///< Pointer to the storage manager interface
+  RelayModuleInterface* m_relayModule;        ///< Pointer to the relay module interface
+  ButtonModuleInterface* m_buttonModule;      ///< Pointer to the button module interface
+  TaskHandle_t* m_blinkTaskHandle;            ///< Handle of the blink task
+
+  /**
+   * @brief Initialize the Wi-Fi event listener.
+   */
+  void initWiFiEventListener();
+
+  /**
+   * @brief Set the button callbacks.
+   */
+  void setButtonCallbacks();
+
+  /**
+   * @brief Callback for the button SINGLE press event.
+   */
+  void resetartCallBack();
+
+  /**
+   * @brief Callback for the button DOUBLE press event.
+   */
+  void programModeCallBack();
+
+  /**
+   * @brief Callback for the button LONG press event.
+   */
+  void factoryResetCallBack();
+
+  /**
+   * @brief Wi-Fi event handler.
+   * @param arg Pointer to the argument.
+   * @param eventBase Base of the event.
+   * @param eventId ID of the event.
+   * @param eventData Pointer to the event data.
+   */
+  static void wifiEventHandler(void* arg, esp_event_base_t eventBase, int32_t eventId, void* eventData);
+
+  /**
+   * @brief Task to blink the LED based on the current status mode.
+   */
+  void ledBlinkingTask();
 
   /**
    * @brief Start the LED blinking task based on the current status mode.
    */
   void startLedTask();
+
+  // Delete the copy constructor and assignment operator
+  StatusControlManager(const StatusControlManager&) = delete;
+  StatusControlManager& operator=(const StatusControlManager&) = delete;
 };

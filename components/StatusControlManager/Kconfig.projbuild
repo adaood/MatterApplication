@@ -1,3 +1,39 @@
 menu "Status Control Manager"
+    config S_C_M_STATUS_LED_PIN
+        int "LED Pin"
+        default 2
+        help
+            The pin number of the LED that will be used to indicate the status of the device.
 
+    config S_C_M_CONTROL_BUTTON_PIN
+        int "Control Button Pin"
+        default 5
+        help
+            The pin number of the button that will be used to control the device.
+    
+    config S_C_M_CONTROL_BUTTON_DEBOUNCE_DELAY
+        int "Control Button Debounce Delay"
+        default 50
+        help
+            The delay in milliseconds to debounce the control button.
+
+    config S_C_M_CONTROL_BUTTON_LONG_PRESS_DELAY
+        int "Control Button Long Press Delay"
+        default 2000
+        help
+            The delay in milliseconds to consider a button press as a long press.
+
+    config S_C_M_BLINKING_TASK_STACK_SIZE
+        int "Blinking Task Stack Size"
+        default 2048
+        range 1024 16384
+        help
+            The stack size of the blinking task.
+
+    config S_C_M_BLINKING_TASK_PRIORITY
+        int "Blinking Task Priority"
+        default 5
+        range 1 31
+        help
+            The priority of the blinking task.
 endmenu

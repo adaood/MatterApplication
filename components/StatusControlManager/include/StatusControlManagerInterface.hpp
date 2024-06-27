@@ -1,35 +1,39 @@
 #pragma once
 
 /**
- * @file StatusControlManagerInterface.hpp
- * @brief Defines the interface for the StatusControlManager class.
+ * @brief Enumeration of the different device status modes.
  */
-
-enum class STATUS_MODE {
-  RUNNING,         ///< The system is running normally.
-  PROGRAMMING,     ///< The system is in programming mode.
-  TRY_CONNECTING,  ///< The system is trying to establish a connection.
-  SEARCH_WIFI,     ///< The system is searching for a WiFi network.
+enum class DeviceStatusMode {
+  WaitingForPairing,     ///< Device is waiting for pairing
+  WaitingForConnection,  ///< Device is waiting for connection
+  RunningAsExpected,     ///< Device is running as expected
+  InProgramMode,         ///< Device is in program mode
 };
 
 /**
- * @class StatusControlManagerInterface
- * @brief Interface for managing the status led and control button
+ * @brief Interface for the Status Control Manager.
  */
 class StatusControlManagerInterface {
  public:
+  /**
+   * @brief Virtual destructor.
+   */
   virtual ~StatusControlManagerInterface() = default;
 
   /**
-   * @brief Get the current status mode.
+   * @brief Get the current status mode of the device.
    * @return The current status mode.
    */
-  virtual STATUS_MODE getStatusMode() = 0;
+  virtual DeviceStatusMode getCurrentStatusMode() const = 0;
 
   /**
-   * @brief Set the status mode.
-   * @details This method will change the status mode and start the blinking task.
+   * @brief Update the status mode of the device.
    * @param mode The new status mode to set.
    */
-  virtual void setStatusMode(STATUS_MODE mode) = 0;
+  virtual void updateStatusMode(DeviceStatusMode mode) = 0;
+
+  /**
+   * @brief Start the status control manager.
+   */
+  virtual void start() = 0;
 };

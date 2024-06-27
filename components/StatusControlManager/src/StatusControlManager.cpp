@@ -1,103 +1,161 @@
 #include "StatusControlManager.hpp"
 
-#include <esp_system.h>
+#include <esp_log.h>
 
-StatusControlManager::StatusControlManager(ButtonModuleInterface *buttonModule,
-                                           RelayModuleInterface *relayModule,
-                                           StorageManagerInterface *storageManager, STATUS_MODE mode)
-    : buttonModule(buttonModule),
-      relayModule(relayModule),
-      storageManager(storageManager),
-      statusMode(mode),
-      blinkTaskHandle(nullptr) {
-  // Set the button module to use the buttonPressed method of this class.
-  buttonModule->onSinglePress(buttonSingleFunction, this);
-  buttonModule->onLongPress(buttonLongFunction, this);
+#include <ButtonModule.hpp>
+#include <RelayModule.hpp>
 
-  setStatusMode(mode);
-}
+static const char* TAG = "StatusControlManager";
 
-StatusControlManager::~StatusControlManager() {
-  // Delete the blinking task.
-  if (blinkTaskHandle != nullptr) vTaskDelete(blinkTaskHandle);
-}
-
-STATUS_MODE StatusControlManager::getStatusMode() { return statusMode; }
-
-void StatusControlManager::setStatusMode(STATUS_MODE mode) {
-  // Set the status mode.
-  statusMode = mode;
-
-  // Delete the blinking task.
-  if (blinkTaskHandle != nullptr) {
-    vTaskDelete(blinkTaskHandle);
-    blinkTaskHandle = nullptr;
+StatusControlManager::StatusControlManager(StorageManagerInterface* storageManager,
+                                           RelayModuleInterface* relayModule,
+                                           ButtonModuleInterface* buttonModule)
+    : m_storageManager(storageManager),
+      m_relayModule(relayModule),
+      m_buttonModule(buttonModule),
+      m_currentStatusMode(DeviceStatusMode::WaitingForPairing),
+      m_blinkTaskHandle(nullptr) {
+  if (m_relayModule == nullptr) {
+    ESP_LOGI(TAG, "Creating default relay module");
+    m_relayModule = new RelayModule(CONFIG_S_C_M_STATUS_LED_PIN, 1, 1);
   }
+  if (m_buttonModule == nullptr) {
+    ESP_LOGI(TAG, "Creating default button module");
+    m_buttonModule =
+        new ButtonModule(CONFIG_S_C_M_CONTROL_BUTTON_PIN, 1, CONFIG_S_C_M_CONTROL_BUTTON_DEBOUNCE_DELAY,
+                         CONFIG_S_C_M_CONTROL_BUTTON_LONG_PRESS_DELAY);
+  }
+}
 
+DeviceStatusMode StatusControlManager::getCurrentStatusMode() const { return m_currentStatusMode; }
+
+void StatusControlManager::updateStatusMode(DeviceStatusMode mode) {
+  m_currentStatusMode = mode;
+  ESP_LOGI(TAG, "Status mode changed to:");
   startLedTask();
 }
 
+void StatusControlManager::start() {
+  initWiFiEventListener();
+  updateStatusMode(DeviceStatusMode::WaitingForPairing);
+  setButtonCallbacks();
+}
+
+void StatusControlManager::initWiFiEventListener() {
+  ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifiEventHandler, this));
+  ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifiEventHandler, this));
+}
+
+void StatusControlManager::wifiEventHandler(void* arg, esp_event_base_t eventBase, int32_t eventId,
+                                            void* eventData) {
+  StatusControlManager* manager = static_cast<StatusControlManager*>(arg);
+
+  if (eventBase == WIFI_EVENT) {
+    if (eventId == WIFI_EVENT_STA_DISCONNECTED || eventId == WIFI_EVENT_STA_START) {
+      manager->updateStatusMode(DeviceStatusMode::WaitingForConnection);
+    } else if (eventId == WIFI_EVENT_AP_START) {
+      manager->updateStatusMode(DeviceStatusMode::InProgramMode);
+    }
+  } else if (eventBase == IP_EVENT) {
+    if (eventId == IP_EVENT_STA_GOT_IP) {
+      manager->updateStatusMode(DeviceStatusMode::RunningAsExpected);
+    }
+  }
+}
+
 void StatusControlManager::startLedTask() {
-  relayModule->setPower(false);
-  switch (statusMode) {
-    case STATUS_MODE::RUNNING:
-      relayModule->setPower(true);
-      break;
-    case STATUS_MODE::PROGRAMMING:
-      xTaskCreate(
-          [](void *pParameter) {
-            StatusControlManager *self = static_cast<StatusControlManager *>(pParameter);
-            self->ledBlinkingTask(self->programModeTimings[0], self->programModeTimings[1],
-                                  self->programModeTimings[2], self->programModeTimings[3]);
-          },
-          "blinkTask", 3000, this, 1, &blinkTaskHandle);
-      break;
-    case STATUS_MODE::TRY_CONNECTING:
-      xTaskCreate(
-          [](void *pParameter) {
-            StatusControlManager *self = static_cast<StatusControlManager *>(pParameter);
-            self->ledBlinkingTask(self->tryConnectTimings[0], self->tryConnectTimings[1],
-                                  self->tryConnectTimings[2], self->tryConnectTimings[3]);
-          },
-          "blinkTask", 3000, this, 1, &blinkTaskHandle);
-      break;
-    case STATUS_MODE::SEARCH_WIFI:
-      xTaskCreate(
-          [](void *pParameter) {
-            StatusControlManager *self = static_cast<StatusControlManager *>(pParameter);
-            self->ledBlinkingTask(self->searchWifiTimings[0], self->searchWifiTimings[1],
-                                  self->searchWifiTimings[2], self->searchWifiTimings[3]);
-          },
-          "blinkTask", 3000, this, 1, &blinkTaskHandle);
-      break;
+  m_relayModule->setPower(false);
+  if (m_blinkTaskHandle != nullptr) {
+    vTaskDelete(m_blinkTaskHandle);
+    m_blinkTaskHandle = nullptr;
   }
+
+  xTaskCreate(
+      [](void* arg) {
+        StatusControlManager* manager = static_cast<StatusControlManager*>(arg);
+        manager->ledBlinkingTask();
+      },
+      "ledBlinkingTask", CONFIG_S_C_M_BLINKING_TASK_STACK_SIZE, this, CONFIG_S_C_M_BLINKING_TASK_PRIORITY,
+      m_blinkTaskHandle);
 }
 
-void StatusControlManager::ledBlinkingTask(uint16_t firstON, uint16_t firstOFF, uint16_t secondON,
-                                           uint16_t secondOFF) {
+void StatusControlManager::ledBlinkingTask() {
+  uint16_t delay1 = 0;
+  uint16_t delay2 = 0;
+  uint16_t delay3 = 0;
+  uint16_t delay4 = 0;
+  switch (m_currentStatusMode) {
+    case DeviceStatusMode::WaitingForPairing:
+      delay1 = 250;
+      delay2 = 250;
+      delay3 = 250;
+      delay4 = 250;
+      break;
+    case DeviceStatusMode::WaitingForConnection:
+      delay1 = 250;
+      delay2 = 1000;
+      delay3 = 250;
+      delay4 = 1000;
+      break;
+    case DeviceStatusMode::InProgramMode:
+      delay1 = 250;
+      delay2 = 100;
+      delay3 = 250;
+      delay4 = 1000;
+      break;
+    default:
+      m_relayModule->setPower(true);
+      m_blinkTaskHandle = nullptr;
+      vTaskDelete(m_blinkTaskHandle);
+      break;
+  }
+
   while (true) {
-    relayModule->setPower(true);
-    vTaskDelay(firstON / portTICK_PERIOD_MS);
-    relayModule->setPower(false);
-    vTaskDelay(firstOFF / portTICK_PERIOD_MS);
-    relayModule->setPower(true);
-    vTaskDelay(secondON / portTICK_PERIOD_MS);
-    relayModule->setPower(false);
-    vTaskDelay(secondOFF / portTICK_PERIOD_MS);
+    m_relayModule->setPower(true);
+    vTaskDelay(delay1 / portTICK_PERIOD_MS);
+    m_relayModule->setPower(false);
+    vTaskDelay(delay2 / portTICK_PERIOD_MS);
+    m_relayModule->setPower(true);
+    vTaskDelay(delay3 / portTICK_PERIOD_MS);
+    m_relayModule->setPower(false);
+    vTaskDelay(delay4 / portTICK_PERIOD_MS);
   }
 }
 
-void StatusControlManager::buttonSingleFunction(void *self) {
-  StatusControlManager *statusControlManager = static_cast<StatusControlManager *>(self);
+void StatusControlManager::setButtonCallbacks() {
+  m_buttonModule->setSinglePressCallback([](void* arg) {
+    StatusControlManager* manager = static_cast<StatusControlManager*>(arg);
+    manager->resetartCallBack();
+  });
 
-  statusControlManager->storageManager->setProgramMode(false);
+  m_buttonModule->setDoublePressCallback([](void* arg) {
+    StatusControlManager* manager = static_cast<StatusControlManager*>(arg);
+    manager->programModeCallBack();
+  });
+
+  m_buttonModule->setLongPressCallback([](void* arg) {
+    StatusControlManager* manager = static_cast<StatusControlManager*>(arg);
+    manager->factoryResetCallBack();
+  });
+}
+
+void StatusControlManager::resetartCallBack() {
+  if (m_storageManager != nullptr) {
+    m_storageManager->isProgramModeEnabled(false);
+  }
   esp_restart();
 }
 
-void StatusControlManager::buttonLongFunction(void *self) {
-  StatusControlManager *statusControlManager = static_cast<StatusControlManager *>(self);
+void StatusControlManager::programModeCallBack() {
+  if (m_storageManager != nullptr) {
+    m_storageManager->isProgramModeEnabled(true);
+  }
+  esp_restart();
+}
 
-  statusControlManager->storageManager->setProgramMode(true);
-
+void StatusControlManager::factoryResetCallBack() {
+  if (m_storageManager != nullptr) {
+    m_storageManager->eraseAllData();
+  }
   esp_restart();
 }
