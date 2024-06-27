@@ -32,15 +32,18 @@ extern "C" void app_main() {
 
   if (storageManager->checkProgramMode()) {
     // create an instance of the AccessPoint class
+    statusControlManager->setStatusMode(STATUS_MODE::PROGRAMMING);
     accessPoint = new AccessPoint(storageManager);
     accessPoint->startWebServer();
   } else {
     storageManager->getAccessoryDB(jsonArray, numAcc);
     if (strlen(jsonArray) <= 0) {
+      statusControlManager->setStatusMode(STATUS_MODE::PROGRAMMING);
       accessPoint = new AccessPoint(storageManager);
       accessPoint->startWebServer();
     } else {
       // create an instance of the EndpointManager class
+      statusControlManager->setStatusMode(STATUS_MODE::RUNNING);
       endpointManager = new EndpointManager(true);
       endpointManager->createArrayOfEndpoints(jsonArray, strlen(jsonArray));
       endpointManager->startMatter();
