@@ -10,19 +10,21 @@ static const char* TAG = "StatusControlManager";
 StatusControlManager::StatusControlManager(StorageManagerInterface* storageManager,
                                            RelayModuleInterface* relayModule,
                                            ButtonModuleInterface* buttonModule)
-    : m_storageManager(storageManager),
+    : m_currentStatusMode(DeviceStatusMode::WaitingForPairing),
+      m_storageManager(storageManager),
       m_relayModule(relayModule),
       m_buttonModule(buttonModule),
-      m_currentStatusMode(DeviceStatusMode::WaitingForPairing),
       m_blinkTaskHandle(nullptr),
-      internalRelayModule(relayModule == nullptr),
-      internalButtonModule(buttonModule == nullptr) {
+      internalRelayModule(false),
+      internalButtonModule(false) {
   if (m_relayModule == nullptr) {
     ESP_LOGI(TAG, "Creating default relay module");
+    internalRelayModule = true;
     m_relayModule = new RelayModule(CONFIG_S_C_M_STATUS_LED_PIN, 1, 1);
   }
   if (m_buttonModule == nullptr) {
     ESP_LOGI(TAG, "Creating default button module");
+    internalButtonModule = true;
     m_buttonModule =
         new ButtonModule(CONFIG_S_C_M_CONTROL_BUTTON_PIN, 1, CONFIG_S_C_M_CONTROL_BUTTON_DEBOUNCE_DELAY,
                          CONFIG_S_C_M_CONTROL_BUTTON_LONG_PRESS_DELAY);
