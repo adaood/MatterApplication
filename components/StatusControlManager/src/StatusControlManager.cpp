@@ -125,7 +125,7 @@ void StatusControlManager::ledBlinkingTask() {
     default:
       m_relayModule->setPower(true);
       m_blinkTaskHandle = nullptr;
-      vTaskDelete(*m_blinkTaskHandle);
+      vTaskDelete(nullptr);
       break;
   }
 
