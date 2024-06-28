@@ -99,14 +99,14 @@ esp_err_t mount_fs(char *base_path, char *partition_label) {
 esp_err_t unpair_device(StorageManagerInterface *storageManager) {
   // get the accessory DB from the storageManager
   char response[CONFIG_AP_ACCESSORY_JSON_SIZE];
-  storageManager->getAccessoryDB(response, sizeof(response));
+  storageManager->getAccessoryJson(response, sizeof(response));
   ESP_LOGI("unpair_device", "Accessory DB: %s", response);
 
   // erase the storage
-  storageManager->eraseStorage();
+  storageManager->eraseAllData();
 
   // set the accessory DB to the storageManager
-  storageManager->setAccessoryDB(response);
+  storageManager->setAccessoryJson(response, strlen(response));
 
   // restart the device
   restart_device();
@@ -116,7 +116,7 @@ esp_err_t unpair_device(StorageManagerInterface *storageManager) {
 
 esp_err_t factory_reset(StorageManagerInterface *storageManager) {
   // erase the device
-  storageManager->eraseDevice();
+  storageManager->eraseAllData();
 
   // restart the device
   restart_device();
@@ -139,13 +139,13 @@ esp_err_t existProgramMode(StorageManagerInterface *storageManager) {
 
 esp_err_t get_accessory_DB_JSON(StorageManagerInterface *storageManager, char *response,
                                 size_t response_size) {
-  storageManager->getAccessoryDB(response, response_size);
+  storageManager->getAccessoryJson(response, response_size);
 
   return ESP_OK;
 }
 
 esp_err_t set_accessory_DB_JSON(StorageManagerInterface *storageManager, const char *new_accessory_json) {
-  storageManager->setAccessoryDB(new_accessory_json);
+  storageManager->setAccessoryJson(new_accessory_json, strlen(new_accessory_json));
 
   return ESP_OK;
 }
