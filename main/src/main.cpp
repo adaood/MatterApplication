@@ -23,27 +23,28 @@ extern "C" void app_main() {
   ButtonModule *buttonModule = new ButtonModule(5);
   RelayModule *relayModule = new RelayModule(2);
   StatusControlManager *statusControlManager =
-      new StatusControlManager(buttonModule, relayModule, storageManager, STATUS_MODE::SEARCH_WIFI);
+      new StatusControlManager(storageManager, relayModule, buttonModule);
   AccessPoint *accessPoint;
   EndpointManager *endpointManager;
 
   int numAcc = 4000;
   char *jsonArray = (char *)calloc(numAcc, sizeof(char));
 
-  if (storageManager->checkProgramMode()) {
+  bool progFlag = false;
+  if (storageManager->isProgramModeEnabled(&progFlag) == ESP_OK && (progFlag == true)) {
     // create an instance of the AccessPoint class
-    statusControlManager->setStatusMode(STATUS_MODE::PROGRAMMING);
+    statusControlManager->updateStatusMode(DeviceStatusMode::InProgramMode);
     accessPoint = new AccessPoint(storageManager);
     accessPoint->startWebServer();
   } else {
-    storageManager->getAccessoryDB(jsonArray, numAcc);
+    storageManager->getAccessoryJson(jsonArray, numAcc);
     if (strlen(jsonArray) <= 0) {
-      statusControlManager->setStatusMode(STATUS_MODE::PROGRAMMING);
+      statusControlManager->updateStatusMode(DeviceStatusMode::InProgramMode);
       accessPoint = new AccessPoint(storageManager);
       accessPoint->startWebServer();
     } else {
       // create an instance of the EndpointManager class
-      statusControlManager->setStatusMode(STATUS_MODE::RUNNING);
+      statusControlManager->updateStatusMode(DeviceStatusMode::RunningAsExpected);
       endpointManager = new EndpointManager(true);
       endpointManager->createArrayOfEndpoints(jsonArray, strlen(jsonArray));
       endpointManager->startMatter();
