@@ -101,7 +101,7 @@ esp_err_t AccessPoint::startWebServer() {
   esp_err_t err = mount_fs("", "frontend");
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "Failed to mount filesystem: %s", esp_err_to_name(err));
-    return NULL;
+    return err;
   }
 
   config.uri_match_fn = httpd_uri_match_wildcard;
