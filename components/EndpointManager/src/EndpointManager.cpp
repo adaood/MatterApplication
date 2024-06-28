@@ -6,9 +6,7 @@
 #include <esp_log.h>
 #include <esp_matter.h>
 
-#include <BaseDevice.hpp>
-
-#include "Creator.hpp"
+#include "EndpointCreator.hpp"
 
 static const char *TAG = "EndpointManager";
 
@@ -38,27 +36,16 @@ esp_err_t EndpointManager::createArrayOfEndpoints(const char *jsonArray, size_t 
   // Get the reference to the Accessories array
   JsonArray accessories = doc.as<JsonArray>();
 
+  DeviceCreator deviceCreator;
+
   // Loop through the Accessories array
   for (JsonVariant v : accessories) {
     // Get the reference to the Accessory object
     JsonObject accessory = v.as<JsonObject>();
 
-    // Get the reference to the Accessory type
-    const char *type = accessory["type"].as<const char *>();
-
-    // Create the Accessory based on the type
-    if (strcmp(type, "LIGHT") == 0)
-      Creator::Light(accessory, aggregator);
-    else if (strcmp(type, "FAN") == 0)
-      Creator::Fan(accessory, aggregator);
-    else if (strcmp(type, "BUTTON") == 0)
-      Creator::Button(accessory, aggregator);
-    else if (strcmp(type, "PLUGIN") == 0 || strcmp(type, "OUTLET") == 0)
-      Creator::Plugin(accessory, aggregator);
-    else if (strcmp(type, "WINDOW") == 0 || strcmp(type, "BLIND") == 0)
-      Creator::Window(accessory, aggregator);
+    // Create the device
+    BaseDeviceInterface *device = deviceCreator.createDevice(accessory, aggregator);
   }
-
   return ESP_OK;
 }
 
@@ -74,7 +61,7 @@ esp_err_t EndpointManager::app_identification_cb(esp_matter::identification::cal
                                                  uint8_t effect_variant, void *priv_data) {
   if (type == esp_matter::identification::callback_type_t::START) {
     if (priv_data != nullptr) {
-      BaseDevice *device = static_cast<BaseDevice *>(priv_data);
+      BaseDeviceInterface *device = static_cast<BaseDeviceInterface *>(priv_data);
       if (device != nullptr) {
         device->identify();
       }
@@ -88,9 +75,9 @@ esp_err_t EndpointManager::app_attribute_cb(esp_matter::attribute::callback_type
                                             esp_matter_attr_val_t *val, void *priv_data) {
   if (type == esp_matter::attribute::callback_type_t::POST_UPDATE) {
     if (priv_data != nullptr) {
-      BaseDevice *device = static_cast<BaseDevice *>(priv_data);
+      BaseDeviceInterface *device = static_cast<BaseDeviceInterface *>(priv_data);
       if (device != nullptr) {
-        device->updateAccessory();
+        device->updateAccessory(attribute_id);
       }
     }
     return ESP_OK;
@@ -150,7 +137,7 @@ void EndpointManager::app_event_cb(const chip::DeviceLayer::ChipDeviceEvent *eve
       ESP_LOGW(__FILENAME__, "---------------------------------");
       break;
 
-    case chip::DeviceLayer::DeviceEventType::kFabricRemoved: {
+    case chip::DeviceLayer::DeviceEventType::kFabricRemoved:
       ESP_LOGW(__FILENAME__, "Fabric removed successfully");
       ESP_LOGW(__FILENAME__, "---------------------------------");
       ESP_LOGW(__FILENAME__, "---------------------------------");
@@ -168,8 +155,6 @@ void EndpointManager::app_event_cb(const chip::DeviceLayer::ChipDeviceEvent *eve
         }
       }
       break;
-    }
-
     case chip::DeviceLayer::DeviceEventType::kFabricWillBeRemoved:
       ESP_LOGW(__FILENAME__, "Fabric will be removed");
       ESP_LOGW(__FILENAME__, "---------------------------------");
